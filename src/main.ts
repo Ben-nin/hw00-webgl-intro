@@ -14,11 +14,11 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 const controls = {
   tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
-  // color: [0, 128, 255, 0.3],
-  color: '#FF0000',
-
+  
 };
-
+var palette = {
+  color: [0, 128, 255],
+};
 let icosphere: Icosphere;
 let square: Square;
 let cube: Cube;
@@ -46,7 +46,7 @@ function main() {
   const gui = new DAT.GUI();
   gui.add(controls, 'tesselations', 0, 8).step(1);
   gui.add(controls, 'Load Scene');
-  gui.add(controls, 'color');
+  gui.addColor(palette, 'color');
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -84,7 +84,7 @@ function main() {
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
-    renderer.render(camera, lambert, [
+    renderer.render(camera, lambert, palette['color'], [
       // icosphere,
       // square,
       cube,
