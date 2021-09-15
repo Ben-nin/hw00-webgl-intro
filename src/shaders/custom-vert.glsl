@@ -63,7 +63,7 @@ void main()
     //modelposition.y = modelposition.y * (cos(u_Time * 0.05) + 2.0) * 0.5;
     //modelposition.z = modelposition.z * (sin(u_Time * 0.05) + 2.0) * 0.5;
     //modelposition = modelposition * rotX;
-    //modelposition = u_Model * morph;
+    modelposition = u_Model * morph;
 
     fs_LightVec = lightPos - modelposition;  // Compute the direction in which the light source lies
     //modelposition = u_Model * vs_Pos * u_Time;
