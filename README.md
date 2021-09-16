@@ -75,3 +75,11 @@ To check if everything is on the right track:
   - Interfaces https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API
   - Types https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Types
   - Constants https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants
+
+UPDATE:
+
+This is a rotating cube. The surface it wields is based on
+
+3-d simplex noise (3-d noise similar to Perlin). Here is the live demo: https://ben-nin.github.io/hw00-webgl-intro/ . 
+![demo](/demo1.png)
+![demo](/demo2.png)
