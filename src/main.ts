@@ -80,7 +80,7 @@ function main() {
   let time = 0;
   // This function will be called every frame
   function tick() {
-    time += 1;
+    time += .1;
     camera.update();
     stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);

@@ -35,6 +35,15 @@ out vec4 fs_Col;            // The color of each vertex. This is implicitly pass
 const vec4 lightPos = vec4(5, 5, 3, 1); //The position of our virtual light, which is used to compute the shading of
                                         //the geometry in the fragment shader.
 
+vec2 rotatePoint2d(vec2 uv, vec2 center, float angle)
+{
+    vec2 rotatedPoint = vec2(uv.x - center.x, uv.y - center.y);
+    float newX = cos(angle) * rotatedPoint.x - sin(angle) * rotatedPoint.y;
+    rotatedPoint.y = sin(angle) * rotatedPoint.x + cos(angle) * rotatedPoint.y;
+    rotatedPoint.x = newX;
+    return rotatedPoint;
+}
+
 void main()
 {
     fs_Pos = vs_Pos;
@@ -58,13 +67,15 @@ void main()
     //                sin(u_Time), cos(u_Time, 0., 0.,
     //                0., 0., 1., 0.
     //                0., 0., 0., 1.));
+    float r = length(vs_Pos);
+    vec2 rot = rotatePoint2d(vs_Pos.xy, vec2(0.f, 0.f), r * sin(r * cos(r + 10.0f) + u_Time) + u_Time);
 
     //modelposition.x = modelposition.x * (sin(u_Time * 0.05) + 2.0) * 0.5;
     //modelposition.y = modelposition.y * (cos(u_Time * 0.05) + 2.0) * 0.5;
     //modelposition.z = modelposition.z * (sin(u_Time * 0.05) + 2.0) * 0.5;
     //modelposition = modelposition * rotX;
-    modelposition = u_Model * morph;
-
+    //modelposition = u_Model * morph;
+    modelposition = vec4(rot, modelposition.z, modelposition.w);
     fs_LightVec = lightPos - modelposition;  // Compute the direction in which the light source lies
     //modelposition = u_Model * vs_Pos * u_Time;
     gl_Position = u_ViewProj * modelposition;// gl_Position is a built-in variable of OpenGL which is
