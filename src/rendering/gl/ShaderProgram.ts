@@ -90,8 +90,6 @@ class ShaderProgram {
   setTime(time: number) {
     this.use();
     if (this.unifTime !== -1) {
-      // console.log(time);
-      // console.log(this.unifTime)
       gl.uniform1f(this.unifTime, time);
     }
   }

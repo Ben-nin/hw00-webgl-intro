@@ -12,17 +12,17 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
-  tesselations: 5,
+  tesselations: 6,
   'Load Scene': loadScene, // A function pointer, essentially
   
 };
 var palette = {
-  color: [0, 0, 71],
+  color: [59, 100, 71],
 };
 let icosphere: Icosphere;
 let square: Square;
 let cube: Cube;
-let prevTesselations: number = 5;
+let prevTesselations: number = 6;
 
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
@@ -77,10 +77,15 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/custom-frag.glsl')),
   ])
 
+  const biomeShader = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/biome-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/biome-frag.glsl')),
+  ])
+
   let time = 0;
   // This function will be called every frame
   function tick() {
-    time += .1;
+    time += .005;
     camera.update();
     stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
@@ -91,10 +96,11 @@ function main() {
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
-    renderer.render(camera, customShader, palette['color'], time, [
-      // icosphere,
+    // renderer.render(camera, customShader, palette['color'], time, [
+    renderer.render(camera, biomeShader, palette['color'], time, [
+      icosphere,
       // square,
-      cube,
+      // cube,
     ]);
     stats.end();
 
