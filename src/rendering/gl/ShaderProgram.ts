@@ -1,4 +1,4 @@
-import {vec4, mat4} from 'gl-matrix';
+import {vec3, vec4, mat4} from 'gl-matrix';
 import Drawable from './Drawable';
 import {gl} from '../../globals';
 
@@ -25,6 +25,10 @@ class ShaderProgram {
   attrNor: number;
   attrCol: number;
   
+  unifCamera: WebGLUniformLocation;
+  unifOctavity: WebGLUniformLocation;
+  unifHot: WebGLUniformLocation;
+  unifDry: WebGLUniformLocation;
   unifTime: WebGLUniformLocation;
   unifModel: WebGLUniformLocation;
   unifModelInvTr: WebGLUniformLocation;
@@ -45,7 +49,11 @@ class ShaderProgram {
     this.attrPos = gl.getAttribLocation(this.prog, "vs_Pos");
     this.attrNor = gl.getAttribLocation(this.prog, "vs_Nor");
     this.attrCol = gl.getAttribLocation(this.prog, "vs_Col");
-    this.unifTime = gl.getUniformLocation(this.prog, "u_Time")
+    this.unifCamera = gl.getUniformLocation(this.prog, "u_Camera");
+    this.unifOctavity = gl.getUniformLocation(this.prog, "u_Octavity");
+    this.unifHot = gl.getUniformLocation(this.prog, "u_Hot");
+    this.unifDry = gl.getUniformLocation(this.prog, "u_Dry");
+    this.unifTime = gl.getUniformLocation(this.prog, "u_Time");
     this.unifModel      = gl.getUniformLocation(this.prog, "u_Model");
     this.unifModelInvTr = gl.getUniformLocation(this.prog, "u_ModelInvTr");
     this.unifViewProj   = gl.getUniformLocation(this.prog, "u_ViewProj");
@@ -91,6 +99,34 @@ class ShaderProgram {
     this.use();
     if (this.unifTime !== -1) {
       gl.uniform1f(this.unifTime, time);
+    }
+  }
+
+  setDry(dry: number) {
+    this.use();
+    if (this.unifDry !== -1) {
+      gl.uniform1f(this.unifDry, dry);
+    }
+  }
+
+  setHot(hot: number) {
+    this.use();
+    if (this.unifDry !== -1) {
+      gl.uniform1f(this.unifHot, hot);
+    }
+  }
+
+  setOctavity(octavity: number) {
+    this.use();
+    if (this.unifOctavity !== -1) {
+      gl.uniform1f(this.unifOctavity, octavity);
+    }
+  }
+  
+  setCamera(camera: vec3) {
+    this.use();
+    if (this.unifCamera !== -1) {
+      gl.uniform3fv(this.unifCamera, camera);
     }
   }
 

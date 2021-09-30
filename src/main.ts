@@ -14,7 +14,9 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 const controls = {
   tesselations: 6,
   'Load Scene': loadScene, // A function pointer, essentially
-  
+  dryness: 15,
+  hotness: 25,
+  octavity: 10,
 };
 var palette = {
   color: [59, 100, 71],
@@ -23,6 +25,9 @@ let icosphere: Icosphere;
 let square: Square;
 let cube: Cube;
 let prevTesselations: number = 6;
+let prevDryness = 15;
+let prevHot = 25;
+let prevOctavity = 10;
 
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
@@ -45,6 +50,9 @@ function main() {
   // Add controls to the gui
   const gui = new DAT.GUI();
   gui.add(controls, 'tesselations', 0, 8).step(1);
+  gui.add(controls, 'dryness', 0, 100);
+  gui.add(controls, 'hotness', 0, 100);
+  gui.add(controls, 'octavity', 0, 21);
   gui.add(controls, 'Load Scene');
   gui.addColor(palette, 'color');
 
@@ -96,8 +104,25 @@ function main() {
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
+    if (controls.dryness != prevDryness)
+    {
+      prevDryness = controls.dryness;
+    }
+    if (controls.hotness != prevHot)
+    {
+      prevHot = controls.hotness;
+    }
+    if (controls.octavity != prevOctavity)
+    {
+      prevOctavity = controls.octavity;
+    }
     // renderer.render(camera, customShader, palette['color'], time, [
-    renderer.render(camera, biomeShader, palette['color'], time, [
+    renderer.render(camera,biomeShader, palette['color'],
+    time,
+    controls.dryness,
+    controls.hotness,
+    controls.octavity,
+    [
       icosphere,
       // square,
       // cube,

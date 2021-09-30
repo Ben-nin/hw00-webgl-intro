@@ -2,8 +2,12 @@
 
 precision highp float;
 
+uniform mat4 u_Model;
 uniform vec4 u_Color; // The color with which to render this instance of geometry.
-
+uniform float u_Hot;
+uniform float u_Dry;
+uniform float u_Octavity;
+uniform vec3 u_Camera;
 // These are the interpolated values out of the rasterizer, so you can't know
 // their specific values without knowing the vertices that contributed to them
 in vec4 fs_Pos;
@@ -224,11 +228,13 @@ float noise3d(vec3 p){
     return o4.y * d.y + o4.x * (1.0 - d.y);
 }
 
-const int NUM_NOISE_OCTAVES_S  = 10;
-const int NUM_NOISE_OCTAVES_C  = 10;
-const int NUM_NOISE_OCTAVES_N  = 20;
+const int NUM_NOISE_OCTAVES_S_BASE  = 0;
+const int NUM_NOISE_OCTAVES_C_BASE  = 0;
+const int NUM_NOISE_OCTAVES_N_BASE  = 0;
+const int NUM_NOISE_OCTAVES_1D_BASE  = 0;
 
 float sfbm(vec3 x) {
+    int NUM_NOISE_OCTAVES_S = NUM_NOISE_OCTAVES_S_BASE + int(u_Octavity);
 	float v = 0.0;
 	float a = 0.5;
 	vec3 shift = vec3(100);
@@ -241,6 +247,7 @@ float sfbm(vec3 x) {
 }
 // perlin fbm
 float cfbm(vec3 x) {
+    int NUM_NOISE_OCTAVES_C = NUM_NOISE_OCTAVES_C_BASE + int(u_Octavity);
 	float v = 0.0;
 	float a = 0.5;
 	vec3 shift = vec3(100);
@@ -253,6 +260,7 @@ float cfbm(vec3 x) {
 }
 
 float nfbm(vec3 x) {
+    int NUM_NOISE_OCTAVES_N = NUM_NOISE_OCTAVES_N_BASE + int(u_Octavity);
 	float v = 0.0;
 	float a = 0.5;
 	vec3 shift = vec3(100);
@@ -264,66 +272,101 @@ float nfbm(vec3 x) {
 	return v;
 }
 
-// cosine based palette, 4 vec3 params
+float fbm1d(float x) {
+    int NUM_NOISE_OCTAVES_1D = NUM_NOISE_OCTAVES_1D_BASE + int(u_Octavity);
+	float v = 0.0;
+	float a = 0.5;
+	float shift = float(100);
+	for (int i = 0; i < NUM_NOISE_OCTAVES_1D; ++i) {
+		v += a * noise1d(x);
+		x = x * 2.0 + shift;
+		a *= 0.5;
+	}
+	return v;
+}
+
 vec3 palette( in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d )
 {
     return a + b*cos( 6.28318*(c*t+d) );
 }
 
+// bool inOcean(float height) {
+//     return height < u_Ocean;
+// }
+
 void main()
 {
+    vec4 H = vec4(u_Camera.x, u_Camera.y, u_Camera.z, 1.0f) + fs_LightVec;
+    H /= 2.f;
+
+    float specInt = max(pow(dot(normalize(H), normalize(fs_Nor)), 100.f), 0.f);
+    // float specInt = 0.f;
     // Material base color (before shading)
     vec4 diffuseColor = u_Color;
-
+    
     // Calculate the diffuse term for Lambert shading
     float diffuseTerm = dot(normalize(fs_Nor), normalize(fs_LightVec));
     // Avoid negative lighting values
     diffuseTerm = clamp(diffuseTerm, 0.0, 1.0);
 
-    float ambientTerm = 0.3;
+    float ambientTerm = 0.1;
 
     float lightIntensity = diffuseTerm + ambientTerm;   //Add a small float value to the color multiplier
                                                         //to simulate ambient lighting. This ensures that faces that are not
                                                         //lit by our point light are not completely black.
 
     // Compute final shaded color
-    out_Col = vec4(diffuseColor.rgb * lightIntensity, diffuseColor.a);
+    // out_Col = vec4(diffuseColor.rgb * lightIntensity, diffuseColor.a);
 
-    float bioNois1Thresh = -0.1f;
-    float bioNois2Thresh = -0.1f;
     vec3 bioNois1Input = fs_Pos.xyz * 0.5f;
     vec3 bioNois2Input = fs_Pos.xyz * 0.5f;
 
     // figure out biomes by thresholds
     float bioNois1 = snoise(bioNois1Input);
     float bioNois2 = cnoise(bioNois2Input);
+    float bioNois1Thresh = u_Hot;
+    float bioNois2Thresh = u_Dry;
     vec3 surfaceColor;
     if (bioNois1 > bioNois1Thresh) {
         if (bioNois2 > bioNois2Thresh) {
-            surfaceColor = rgb(255.f, 0.f, 0.f);
+            float t = getGain(bioNois1, 0.6);
+            vec3 a = vec3(0.500, 0.500, 0.000);
+            vec3 b = vec3(0.500, 0.500, 0.000);
+            vec3 c = vec3(0.500, 0.500, 0.000);
+            vec3 d = vec3(0.500, 0.000, 0.000);
+            
+            surfaceColor = palette(t, a, b, c, d);
         } else {
-            surfaceColor = rgb(255.f, 255.f, 0.f);
+            float t = getGain(bioNois2, 0.75);
+            vec3 a = vec3(3.138, 0.500, 0.500);
+            vec3 b = vec3(0.500, 0.500, 0.500);
+            vec3 c = vec3(3.138, 0.448, 0.667);
+            vec3 d = vec3(0.800, 1.000, 0.333);
+            surfaceColor = palette(t, a, b, c, d);
         }
     } else {
         if (bioNois2 > bioNois2Thresh) {
-            surfaceColor = rgb(255.f, 255.f, 255.f);
+            float t = getGain(bioNois1, 0.75);
+            vec3 a = vec3(0.938, 0.328, 0.718);
+            vec3 b = vec3(0.659, 0.438, 0.328);
+            vec3 c = vec3(0.388, 0.388, 0.296);
+            vec3 d = vec3(2.538, 2.478, 0.168);
+            surfaceColor = palette(t, a, b, c, d);
         } else {
-            surfaceColor = rgb(0.f, 0.f, 255.f);
+            float t = getGain(bioNois2, 0.25);
+            vec3 a = vec3(0.660, 0.560, 0.680);
+            vec3 b = vec3(0.718, 0.438, 0.720);
+            vec3 c = vec3(0.520, 0.448, 0.520);
+            vec3 d = vec3(-0.430, -0.397, -0.083);
+            surfaceColor = palette(t, a, b, c, d);
         }
     }
-    // diffuseColor = surfaceColor;
-    out_Col = vec4(surfaceColor.rgb * surfaceColor.rgb * lightIntensity, diffuseColor.a);
-    // out_Col *= surfaceColor;
-    // vec3 noiseInput = fs_Pos.xyz;
-    // noiseInput *= 1.f;
 
-    // float noise = snoise(noiseInput.xyz);
-    // noise += 0.9f;
-    // noise = clamp(noise, 0.0f, 1.0f);
-    // if (noise < 0.0f) {
-    //     out_Col = vec4(0.0f);
+    // vec4 modelposition = u_Model * fs_Pos;
+    // if (inOcean(length(modelposition.xyz))) {
+    //     modelposition = u_Model * fs_Pos;
     // }
-    // vec3 surfaceColor = vec3(noise);
-    // surfaceColor = u_Color.rgb;
-    // out_Col *= vec4(surfaceColor.xyz, 1.0f);
+    // diffuseColor = surfaceColor;
+    out_Col = vec4(surfaceColor.rgb * surfaceColor.rgb * (lightIntensity + specInt), diffuseColor.a);
+
 }

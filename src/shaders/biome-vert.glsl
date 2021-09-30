@@ -20,6 +20,10 @@ uniform mat4 u_ViewProj;    // The matrix that defines the camera's transformati
                             // but in HW3 you'll have to generate one yourself
 
 uniform float u_Time;
+uniform float u_Dry;
+uniform float u_Hot;
+uniform float u_Octavity;
+uniform vec3 u_Camera;
 
 in vec4 vs_Pos;             // The array of vertex positions passed to the shader
 
@@ -32,7 +36,7 @@ out vec4 fs_Nor;            // The array of normals that has been transformed by
 out vec4 fs_LightVec;       // The direction in which our virtual light lies, relative to each vertex. This is implicitly passed to the fragment shader.
 out vec4 fs_Col;            // The color of each vertex. This is implicitly passed to the fragment shader.
 
-const vec4 lightPos = vec4(3, 4, 6, 1); //The position of our virtual light, which is used to compute the shading of
+vec4 lightPos = vec4(3, 4, 6, 1); //The position of our virtual light, which is used to compute the shading of
                                         //the geometry in the fragment shader.
 
 
@@ -61,6 +65,7 @@ vec2 rotatePoint2d(vec2 uv, vec2 center, float angle)
 vec3 rgb(float r, float g, float b) {
     return vec3(r / 255.0, g / 255.0, b / 255.0);
 }
+
 vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
 vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
 
@@ -256,11 +261,13 @@ float noise3d(vec3 p){
     return o4.y * d.y + o4.x * (1.0 - d.y);
 }
 
-const int NUM_NOISE_OCTAVES_S  = 10;
-const int NUM_NOISE_OCTAVES_C  = 10;
-const int NUM_NOISE_OCTAVES_N  = 20;
+const int NUM_NOISE_OCTAVES_S_BASE  = 0;
+const int NUM_NOISE_OCTAVES_C_BASE  = 0;
+const int NUM_NOISE_OCTAVES_N_BASE  = 0;
+const int NUM_NOISE_OCTAVES_1D_BASE  = 0;
 
 float sfbm(vec3 x) {
+    int NUM_NOISE_OCTAVES_S = NUM_NOISE_OCTAVES_S_BASE + int(u_Octavity);
 	float v = 0.0;
 	float a = 0.5;
 	vec3 shift = vec3(100);
@@ -273,6 +280,7 @@ float sfbm(vec3 x) {
 }
 // perlin fbm
 float cfbm(vec3 x) {
+    int NUM_NOISE_OCTAVES_C = NUM_NOISE_OCTAVES_C_BASE + int(u_Octavity);
 	float v = 0.0;
 	float a = 0.5;
 	vec3 shift = vec3(100);
@@ -285,6 +293,7 @@ float cfbm(vec3 x) {
 }
 
 float nfbm(vec3 x) {
+    int NUM_NOISE_OCTAVES_N = NUM_NOISE_OCTAVES_N_BASE + int(u_Octavity);
 	float v = 0.0;
 	float a = 0.5;
 	vec3 shift = vec3(100);
@@ -295,6 +304,24 @@ float nfbm(vec3 x) {
 	}
 	return v;
 }
+
+float fbm1d(float x) {
+    int NUM_NOISE_OCTAVES_1D = NUM_NOISE_OCTAVES_1D_BASE + int(u_Octavity);
+	float v = 0.0;
+	float a = 0.5;
+	float shift = float(100);
+	for (int i = 0; i < NUM_NOISE_OCTAVES_1D; ++i) {
+		v += a * noise1d(x);
+		x = x * 2.0 + shift;
+		a *= 0.5;
+	}
+	return v;
+}
+
+// bool inOcean(float offset) {
+    // return offset <= u_Ocean;
+//     return false;
+// }
 
 void main()
 {
@@ -311,52 +338,66 @@ void main()
     vec4 modelposition = u_Model * vs_Pos;   // Temporarily store the transformed vertex positions for use below
 
     fs_LightVec = lightPos - modelposition;  // Compute the direction in which the light source lies
-
+    fs_LightVec *= rotationMatrix(vec3(0.f, 1.f, 0.f), u_Time * 1.f);
     // gl_Position = u_ViewProj * modelposition;// gl_Position is a built-in variable of OpenGL which is
                                              // used to render the final positions of the geometry's vertices
     
     vec4 baseLvl = vs_Nor;
     
-    float bioNois1Thresh = -0.1f;
-    float bioNois2Thresh = -0.1f;
     vec3 bioNois1Input = vs_Pos.xyz * 0.5f;
     vec3 bioNois2Input = vs_Pos.xyz * 0.5f;
 
     // figure out biomes by thresholds
-    float bioNois1 = snoise(bioNois1Input);
-    float bioNois2 = cnoise(bioNois2Input);
+    float bioNois1 = snoise(bioNois1Input); // average temperature
+    float bioNois2 = cnoise(bioNois2Input); // level of dryness
+    float bioNois1Thresh = u_Hot;
+    float bioNois2Thresh = u_Dry;
     if (bioNois1 > bioNois1Thresh) {
         if (bioNois2 > bioNois2Thresh) {
             vec3 noiseInput = vs_Pos.xyz;
             float noise = sfbm(noiseInput.xyz);
+            // noise = smoothstep(length(baseLvl), 2.f, noise);
             vec4 offAmt = noise * baseLvl;
+            // if (inOcean(offAmt.x)) {
+            //     offAmt = vec4(u_Ocean) * baseLvl;
+            // }
             modelposition += offAmt;
-            gl_Position = u_ViewProj * modelposition;
         } else {
+            const float heightMax = 0.11f;
+
             vec3 noiseInput = vs_Pos.xyz;
             float noise = nfbm(noiseInput.xyz);
-            noise = noise * 2.f - 1.0f;
-            // float noise = 0.5f;
+            // noise = noise - 0.5f;
+            // noise = mix(0.f, heightMax, noise);
+            // noise = smoothstep(-0.1f, heightMax, noise);
+            // getBias(noise, 0.01f);
             vec4 offAmt = noise * baseLvl;
+            // if (inOcean(offAmt.x)) {
+            //     offAmt = vec4(u_Ocean) * baseLvl;
+            // }
             modelposition += offAmt;
-            gl_Position = u_ViewProj * modelposition;
         }
     } else {
         if (bioNois2 > bioNois2Thresh) {
             vec3 noiseInput = vs_Pos.xyz;
             float noise = cfbm(noiseInput.xyz);
             vec4 offAmt = noise * baseLvl;
-            // float noise = 0.75f;
+            // if (inOcean(offAmt.x)) {
+            //     offAmt = vec4(u_Ocean) * baseLvl;
+            // }
             modelposition += offAmt;
-            gl_Position = u_ViewProj * modelposition;
         } else {
-            vec4 offAmt = 0.f * baseLvl;
+            vec3 noiseInput = vs_Pos.xyz;
+            float noise = snoise(noiseInput);
+            vec4 offAmt = noise * baseLvl;
+            // if (inOcean(offAmt.x)) {
+            //     offAmt = vec4(u_Ocean) * baseLvl;
+            // }
             modelposition += offAmt;
-            gl_Position = u_ViewProj * modelposition;
         }
     }
-    gl_Position = u_ViewProj * rotationMatrix(vec3(0.f, 1.f, 0.f), u_Time) * modelposition;
 
+    gl_Position = u_ViewProj * rotationMatrix(vec3(0.f, 1.f, 0.f), u_Time) * modelposition;
     // vec3 noiseInput = vs_Pos.xyz;
     // noiseInput *= 1.0f;
 
